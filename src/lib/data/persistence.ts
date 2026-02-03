@@ -1198,4 +1198,178 @@ export async function deleteSnapshotsForUser(userId: string): Promise<void> {
   await prisma.awarenessSnapshot.deleteMany({ where: { userId } });
 }
 
+// === Meal Logs (Daily-bounded, free-text descriptions) ===
+
+import { MealType as PrismaMealType } from "@prisma/client";
+
+export interface MealLogInput {
+  mealType: PrismaMealType;
+  descriptionText: string;
+  loggedAt?: Date; // optional, defaults to now
+}
+
+export interface MealLogData {
+  id: string;
+  patientId: string;
+  mealType: PrismaMealType;
+  descriptionText: string;
+  loggedAt: Date;
+  logDate: string;
+  createdAt: Date;
+}
+
+function todayDateString(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function dateToLogDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Add a meal log for a patient.
+ * Multiple logs per meal type per day are allowed (no unique constraint).
+ */
+export async function addMealLog(
+  patientId: string,
+  input: MealLogInput
+): Promise<MealLogData> {
+  if (!patientId || patientId.trim().length === 0) {
+    const { ValidationError } = await import("@/lib/errors");
+    throw new ValidationError(["Invalid patient identifier"]);
+  }
+
+  if (!input.descriptionText || input.descriptionText.trim().length === 0) {
+    const { ValidationError } = await import("@/lib/errors");
+    throw new ValidationError(["Meal description is required"]);
+  }
+
+  const loggedAt = input.loggedAt ?? new Date();
+  const logDate = dateToLogDate(loggedAt);
+
+  const created = await prisma.mealLog.create({
+    data: {
+      patientId,
+      mealType: input.mealType,
+      descriptionText: input.descriptionText.trim(),
+      loggedAt,
+      logDate,
+    },
+  });
+
+  return {
+    id: created.id,
+    patientId: created.patientId,
+    mealType: created.mealType,
+    descriptionText: created.descriptionText,
+    loggedAt: created.loggedAt,
+    logDate: created.logDate,
+    createdAt: created.createdAt,
+  };
+}
+
+/**
+ * Get all meal logs for a patient on a specific date.
+ */
+export async function getMealLogsForDate(
+  patientId: string,
+  date: Date
+): Promise<MealLogData[]> {
+  const dateString = dateToLogDate(date);
+  const logs = await prisma.mealLog.findMany({
+    where: { patientId, logDate: dateString },
+    orderBy: { loggedAt: "asc" },
+  });
+
+  return logs.map((log) => ({
+    id: log.id,
+    patientId: log.patientId,
+    mealType: log.mealType,
+    descriptionText: log.descriptionText,
+    loggedAt: log.loggedAt,
+    logDate: log.logDate,
+    createdAt: log.createdAt,
+  }));
+}
+
+/**
+ * Get all meal logs for a patient within a date range.
+ */
+export async function getMealLogsForDateRange(
+  patientId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<MealLogData[]> {
+  const startStr = startDate.toISOString().slice(0, 10);
+  const endStr = endDate.toISOString().slice(0, 10);
+
+  const logs = await prisma.mealLog.findMany({
+    where: { patientId, logDate: { gte: startStr, lte: endStr } },
+    orderBy: [{ logDate: "desc" }, { loggedAt: "asc" }],
+  });
+
+  return logs.map((log) => ({
+    id: log.id,
+    patientId: log.patientId,
+    mealType: log.mealType,
+    descriptionText: log.descriptionText,
+    loggedAt: log.loggedAt,
+    logDate: log.logDate,
+    createdAt: log.createdAt,
+  }));
+}
+
+/**
+ * Delete a meal log with ownership enforcement.
+ */
+export async function deleteMealLog(
+  patientId: string,
+  mealLogId: string
+): Promise<void> {
+  if (!mealLogId || mealLogId.trim().length === 0) {
+    const { ValidationError } = await import("@/lib/errors");
+    throw new ValidationError(["Invalid meal log identifier"]);
+  }
+
+  const log = await prisma.mealLog.findUnique({ where: { id: mealLogId } });
+
+  if (!log || log.patientId !== patientId) {
+    const { ValidationError } = await import("@/lib/errors");
+    throw new ValidationError(["Meal log not found or not accessible"]);
+  }
+
+  await prisma.mealLog.delete({ where: { id: mealLogId } });
+}
+
+/**
+ * Check if any meal log exists for a patient on a specific date for any meal type.
+ * Returns true if at least one meal log exists for today.
+ */
+export async function hasMealLogForToday(
+  patientId: string
+): Promise<boolean> {
+  if (!patientId) return false;
+  const logDate = todayDateString();
+  const existing = await prisma.mealLog.findFirst({
+    where: {
+      patientId,
+      logDate,
+    },
+  });
+  return !!existing;
+}
+
+/**
+ * Get the count of meal logs for a patient on a specific date.
+ */
+export async function getMealLogCountForDate(
+  patientId: string,
+  date: Date
+): Promise<number> {
+  const dateString = dateToLogDate(date);
+  return prisma.mealLog.count({
+    where: { patientId, logDate: dateString },
+  });
+}
+
 

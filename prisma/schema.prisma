@@ -21,52 +21,61 @@ enum IntakeStatus {
   MISSED
 }
 
+// MealType enum: user-entered meal category (no nutritional logic)
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  OTHER
+}
+
 // User: patient identity and timestamps
 model User {
-  id              String               @id @default(cuid())
-  conditions      DiagnosedCondition[]
-  medications     Medication[]
-  intakeLogs      MedicationIntakeLog[]
-  snapshots       AwarenessSnapshot[]
-  accounts        Account[]
-  sessions        Session[]
-  doctorProfile   DoctorProfile?
-  accessRequests  DoctorAccessRequest[]
-  accessGrants    DoctorAccessGrant[]
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  id             String                @id @default(cuid())
+  conditions     DiagnosedCondition[]
+  medications    Medication[]
+  intakeLogs     MedicationIntakeLog[]
+  mealLogs       MealLog[]
+  snapshots      AwarenessSnapshot[]
+  accounts       Account[]
+  sessions       Session[]
+  doctorProfile  DoctorProfile?
+  accessRequests DoctorAccessRequest[]
+  accessGrants   DoctorAccessGrant[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
 }
 
 // DiagnosedCondition: user-entered condition with optional reference note
 model DiagnosedCondition {
-  id            String       @id @default(cuid())
-  userId        String
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name          String
-  note          String?
-  medications   Medication[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  note        String?
+  medications Medication[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@index([userId])
 }
 
 // Auth.js (NextAuth) Prisma Adapter models
 model Account {
-  id                 String   @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?
-  access_token       String?
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?
-  session_state      String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                String   @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -97,50 +106,50 @@ model VerificationToken {
 
 // Medication: user-entered medication, optionally linked to a condition
 model Medication {
-  id            String               @id @default(cuid())
-  userId        String
-  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name          String
-  schedules     MedicationSchedule[]
-  conditions    DiagnosedCondition[]
-  intakeLogs    MedicationIntakeLog[]
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  id         String                @id @default(cuid())
+  userId     String
+  user       User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  schedules  MedicationSchedule[]
+  conditions DiagnosedCondition[]
+  intakeLogs MedicationIntakeLog[]
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
 
   @@index([userId])
 }
 
 // MedicationSchedule: single time slot for a medication (user-entered timing)
 model MedicationSchedule {
-  id            String     @id @default(cuid())
-  medicationId  String
-  medication    Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
-  timeSlot      TimeSlot
-  frequency     String     // user-entered frequency (e.g., "once-daily", "twice-daily", "as-needed")
-  timing        String     // user-entered timing notes (e.g., "with breakfast", "before bed")
-  note          String?    // optional user note
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  intakeLogs    MedicationIntakeLog[]
+  id           String                @id @default(cuid())
+  medicationId String
+  medication   Medication            @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  timeSlot     TimeSlot
+  frequency    String // user-entered frequency (e.g., "once-daily", "twice-daily", "as-needed")
+  timing       String // user-entered timing notes (e.g., "with breakfast", "before bed")
+  note         String? // optional user note
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  intakeLogs   MedicationIntakeLog[]
 
   @@index([medicationId])
 }
 
 // MedicationIntakeLog: immutable per (schedule x day) logging of intake
 model MedicationIntakeLog {
-  id            String        @id @default(cuid())
+  id            String             @id @default(cuid())
   userId        String
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   medicationId  String
-  medication    Medication    @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  medication    Medication         @relation(fields: [medicationId], references: [id], onDelete: Cascade)
   scheduleId    String
   schedule      MedicationSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
   scheduledTime TimeSlot
   actualTime    DateTime?
   status        IntakeStatus
   observation   String?
-  logDate       String        // YYYY-MM-DD to enforce per-day uniqueness
-  createdAt     DateTime      @default(now())
+  logDate       String // YYYY-MM-DD to enforce per-day uniqueness
+  createdAt     DateTime           @default(now())
 
   @@unique([scheduleId, logDate])
   @@index([userId])
@@ -153,11 +162,11 @@ model AwarenessSnapshot {
   id                      String   @id @default(cuid())
   userId                  String
   user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  timeWindow              String   // e.g., "7d", "14d", "30d"
-  medicationPatterns      String   // JSON: MedicationPattern[]
-  adherenceSignals        String   // JSON: AdherenceSignal[]
-  observationAssociations String   // JSON: ObservationAssociation[]
-  dataSufficiency         Boolean  // true if AI was run, false if insufficient data
+  timeWindow              String // e.g., "7d", "14d", "30d"
+  medicationPatterns      String // JSON: MedicationPattern[]
+  adherenceSignals        String // JSON: AdherenceSignal[]
+  observationAssociations String // JSON: ObservationAssociation[]
+  dataSufficiency         Boolean // true if AI was run, false if insufficient data
   generatedAt             DateTime @default(now())
   createdAt               DateTime @default(now())
 
@@ -173,25 +182,25 @@ enum DoctorAccessRequestStatus {
 
 // DoctorProfile: 1:1 link to User for doctor-specific identity
 model DoctorProfile {
-  id              String               @id @default(cuid())
-  userId          String               @unique
-  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessRequests  DoctorAccessRequest[]
-  accessGrants    DoctorAccessGrant[]
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  id             String                @id @default(cuid())
+  userId         String                @unique
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessRequests DoctorAccessRequest[]
+  accessGrants   DoctorAccessGrant[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
 }
 
 // DoctorAccessRequest: a doctor's pending or declined request to access a patient
 model DoctorAccessRequest {
-  id         String                    @id @default(cuid())
-  doctorId   String
-  doctor     DoctorProfile             @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-  patientId  String
-  patient    User                      @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  status     DoctorAccessRequestStatus @default(PENDING)
-  createdAt  DateTime                  @default(now())
-  updatedAt  DateTime                  @updatedAt
+  id        String                    @id @default(cuid())
+  doctorId  String
+  doctor    DoctorProfile             @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  patientId String
+  patient   User                      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  status    DoctorAccessRequestStatus @default(PENDING)
+  createdAt DateTime                  @default(now())
+  updatedAt DateTime                  @updatedAt
 
   @@unique([doctorId, patientId])
   @@index([doctorId])
@@ -200,17 +209,32 @@ model DoctorAccessRequest {
 
 // DoctorAccessGrant: an active (or revoked) consent for a doctor to access a patient
 model DoctorAccessGrant {
-  id         String         @id @default(cuid())
-  doctorId   String
-  doctor     DoctorProfile  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-  patientId  String
-  patient    User           @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  revokedAt  DateTime?
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+  id        String        @id @default(cuid())
+  doctorId  String
+  doctor    DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  patientId String
+  patient   User          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  revokedAt DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   @@unique([doctorId, patientId])
   @@index([doctorId])
   @@index([patientId])
 }
 
+// MealLog: patient meal log entry (independent of medication logs)
+model MealLog {
+  id              String   @id @default(cuid())
+  patientId       String
+  patient         User     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  mealType        MealType
+  descriptionText String   // free-text meal description entered by user
+  loggedAt        DateTime // timestamp when meal was logged
+  logDate         String   // YYYY-MM-DD derived date for grouping
+  createdAt       DateTime @default(now())
+
+  @@index([patientId, logDate])
+  @@index([patientId])
+  @@index([logDate])
+}

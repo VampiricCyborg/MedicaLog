@@ -70,6 +70,73 @@ export function validateTimeSlot(value: unknown): value is TimeSlot {
 }
 
 // -------------------------
+// MealType Validator
+// -------------------------
+
+// Mirror of Prisma MealType enum without importing it
+export type MealType = "BREAKFAST" | "LUNCH" | "DINNER" | "OTHER";
+
+export function validateMealType(value: unknown): ValidationResult<MealType> {
+  if (value === "BREAKFAST" || value === "LUNCH" || value === "DINNER" || value === "OTHER") {
+    return { ok: true, value: value as MealType };
+  }
+  return { ok: false, errors: ["Meal type must be BREAKFAST, LUNCH, DINNER, or OTHER"] };
+}
+
+/**
+ * Validate meal description text
+ * Required, trimmed, max 1000 chars (free-text)
+ */
+export function validateMealDescriptionText(value: unknown): ValidationResult<string> {
+  if (!isNonEmptyString(value, 1000)) {
+    return {
+      ok: false,
+      errors: ["Meal description is required and must be 1-1000 characters"],
+    };
+  }
+  return { ok: true, value: (value as string).trim() };
+}
+
+export interface MealLogValidationInput {
+  mealType: MealType;
+  descriptionText: string;
+}
+
+/**
+ * Validate complete meal log input
+ */
+export function validateMealLogInput(input: unknown): ValidationResult<MealLogValidationInput> {
+  if (!input || typeof input !== "object") {
+    return { ok: false, errors: ["Invalid meal log input"] };
+  }
+
+  const errors: string[] = [];
+  const obj = input as Record<string, unknown>;
+
+  const mealTypeResult = validateMealType(obj.mealType);
+  if (!mealTypeResult.ok) {
+    errors.push(...mealTypeResult.errors);
+  }
+
+  const descriptionResult = validateMealDescriptionText(obj.descriptionText);
+  if (!descriptionResult.ok) {
+    errors.push(...descriptionResult.errors);
+  }
+
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+
+  return {
+    ok: true,
+    value: {
+      mealType: mealTypeResult.ok ? mealTypeResult.value : "BREAKFAST",
+      descriptionText: descriptionResult.ok ? descriptionResult.value : "",
+    },
+  };
+}
+
+// -------------------------
 // Intake Status Validator
 // -------------------------
 

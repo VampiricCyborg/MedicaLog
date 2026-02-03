@@ -13,6 +13,16 @@ export interface PendingDoctorRequestData {
 export async function getPendingDoctorRequests(): Promise<PendingDoctorRequestData[]> {
   const user = await requireUser({ onFail: "throw" });
 
+  // Sanity check: ensure Prisma client exposes the expected model
+  if (!prisma || typeof prisma !== "object") {
+    throw new Error("Prisma client is not initialized");
+  }
+  // If the model is missing, throw a diagnostic error listing available keys
+  if ((prisma as any).doctorAccessRequest === undefined) {
+    const available = Object.keys(prisma as any).join(", ");
+    throw new Error(`Prisma client missing model 'doctorAccessRequest'. Available keys: ${available}`);
+  }
+
   const requests = await prisma.doctorAccessRequest.findMany({
     where: {
       patientId: user.id,

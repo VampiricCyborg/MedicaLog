@@ -14,6 +14,8 @@ const DEMO_EMAIL = "kiruthickkannaa@gmail.com";
 const DEMO_PASSWORD = "mkk@9116";
 const MOCK_EMAIL = "demo@mock.local";
 const MOCK_PASSWORD = "demo1234";
+const DOCTOR_DEMO_EMAIL = "doctor@demo.local";
+const DOCTOR_DEMO_PASSWORD = "doctor1234";
 
 export const authOptions: NextAuthOptions = {
   // Ensure a secret is present for JWT encryption/decryption. In production
@@ -117,6 +119,41 @@ export const authOptions: NextAuthOptions = {
                 provider,
                 providerAccountId,
               },
+            });
+            return { id: user.id } as any;
+          }
+
+          // Doctor demo account - creates user with DoctorProfile
+          if (email === DOCTOR_DEMO_EMAIL && password === DOCTOR_DEMO_PASSWORD) {
+            const provider = "doctor-demo";
+            const providerAccountId = DOCTOR_DEMO_EMAIL;
+            const existingAccount = await prisma.account.findFirst({
+              where: { provider, providerAccountId },
+            });
+            if (existingAccount) {
+              // Ensure DoctorProfile exists
+              const existingProfile = await prisma.doctorProfile.findUnique({
+                where: { userId: existingAccount.userId },
+              });
+              if (!existingProfile) {
+                await prisma.doctorProfile.create({
+                  data: { userId: existingAccount.userId },
+                });
+              }
+              return { id: existingAccount.userId } as any;
+            }
+            // Create new user with DoctorProfile
+            const user = await prisma.user.create({ data: {} });
+            await prisma.account.create({
+              data: {
+                userId: user.id,
+                type: "credentials",
+                provider,
+                providerAccountId,
+              },
+            });
+            await prisma.doctorProfile.create({
+              data: { userId: user.id },
             });
             return { id: user.id } as any;
           }

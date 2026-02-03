@@ -56,8 +56,8 @@ async function verify() {
   if (user.snapshots.length > 0) {
     const snap = user.snapshots[0];
     console.log(`\nLatest snapshot: ${snap.id}`);
-    console.log(`  Adherence score: ${snap.adherenceScore}`);
-    console.log(`  Signals detected: ${snap.signalCount}`);
+    console.log(`  Data sufficient: ${snap.dataSufficiency}`);
+    console.log(`  Time window: ${snap.timeWindow}`);
   }
 }
 

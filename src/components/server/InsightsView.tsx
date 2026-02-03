@@ -32,6 +32,16 @@ export function InsightsView({ summary, adherenceRate, awarenessFlag, aiSnapshot
     }
   }
 
+  // Collect high-level pattern bullets for awareness (doctor view)
+  const awarenessPatterns: string[] = parsedSnapshot
+    ? [
+        ...(parsedSnapshot.medicationPatterns?.findings ?? []),
+        ...(parsedSnapshot.adherenceSignals?.findings ?? []),
+        ...(parsedSnapshot.observationAssociations?.findings ?? []),
+      ]
+    : [];
+  const topAwarenessPatterns = awarenessPatterns.slice(0, 5);
+
   return (
     <main className="min-h-screen bg-white" aria-labelledby="insights-title">
       <div className="max-w-6xl mx-auto px-4 py-12 space-y-12">
@@ -64,6 +74,33 @@ export function InsightsView({ summary, adherenceRate, awarenessFlag, aiSnapshot
             <p className="text-4xl font-bold text-black mt-3">{awarenessFlag}</p>
             <p className="text-sm text-black/70 mt-3">Awareness flag</p>
           </div>
+        </section>
+
+        <section className="border border-black/10 rounded-2xl p-6 bg-white space-y-4" aria-label="Patient awareness">
+          <div className="flex flex-col gap-2">
+            <h2 className="text-2xl font-bold text-black">Patient Awareness</h2>
+            <div className="inline-flex items-center gap-2 rounded-full bg-black/5 px-3 py-1 text-sm font-medium text-black/80">
+              <span>Adherence flag:</span>
+              <span className="px-2 py-0.5 rounded-full bg-black/10 text-black">{awarenessFlag}</span>
+            </div>
+            <p className="text-sm text-black/70">Informational only.</p>
+          </div>
+
+          {aiSnapshot && aiSnapshot.dataSufficiency && parsedSnapshot && topAwarenessPatterns.length > 0 ? (
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold text-black">High-level patterns</h3>
+              <ul className="space-y-2">
+                {topAwarenessPatterns.map((finding, idx) => (
+                  <li key={idx} className="flex gap-2 text-sm text-black/80">
+                    <span className="text-black/40 flex-shrink-0">•</span>
+                    <span>{finding}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-sm text-black/60">No awareness snapshot available yet. Informational only.</p>
+          )}
         </section>
 
         {!hasMedications && !hasConditions && (

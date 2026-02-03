@@ -15,6 +15,7 @@ export async function Navigation() {
         <nav className="flex items-center gap-6 text-sm font-medium">
           <Link href="/dashboard" className="hover:underline">Dashboard</Link>
           <Link href="/medications" className="hover:underline">Manage Medications</Link>
+          <Link href="/meals" className="hover:underline">Meal Log</Link>
           <Link href="/insights" className="hover:underline">Insights &amp; Awareness</Link>
           <Link href="/patient/doctor-access" className="hover:underline">Doctor Monitoring Access</Link>
           <Link href="/settings" className="hover:underline">Settings</Link>
